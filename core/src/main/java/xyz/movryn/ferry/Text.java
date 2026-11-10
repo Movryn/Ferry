@@ -13,6 +13,7 @@ final class Text {
     private static final Pattern TIME = Pattern.compile("<t:(\\d+)(:[a-zA-Z])?>");
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{([a-z-]+)\\}");
     static final Pattern URL = Pattern.compile("https?://[^\\s<>]+");
+    private static final Pattern BLOCKED_NAME = Pattern.compile("(?i)(disc|cly)(ord|de)");
 
     private Text() {
     }
@@ -56,6 +57,11 @@ final class Text {
         String s = name == null ? "" : name.trim();
         if (s.length() < 2) s = s + "__".substring(s.length());
         return s.length() > 80 ? s.substring(0, 80) : s;
+    }
+
+    static String discordName(String name) {
+        String s = BLOCKED_NAME.matcher(webhookName(name)).replaceAll("$1" + ZWSP + "$2");
+        return s.equalsIgnoreCase("everyone") || s.equalsIgnoreCase("here") ? s + "_" : s;
     }
 
     static String cut(String s, int max) {

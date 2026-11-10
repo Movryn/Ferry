@@ -354,7 +354,7 @@ final class Link {
         JsonObject mentions = new JsonObject();
         mentions.add("parse", new JsonArray());
         body.add("allowed_mentions", mentions);
-        if (username != null) body.addProperty("username", Text.webhookName(username));
+        if (username != null) body.addProperty("username", platform == Platform.DISCORD ? Text.discordName(username) : Text.webhookName(username));
         if (avatar != null) body.addProperty("avatar_url", avatar);
         if (replyTo != null) {
             JsonObject ref = new JsonObject();

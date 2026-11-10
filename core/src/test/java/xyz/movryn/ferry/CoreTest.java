@@ -84,6 +84,9 @@ class CoreTest {
         v.put("player", "Steve");
         assertEquals("Steve did {thing}", Text.fill("{player} did {thing}", v));
         assertEquals("A_", Text.webhookName("A"));
+        assertFalse(Text.discordName("Steve (Discord)").toLowerCase().contains("discord"));
+        assertFalse(Text.discordName("ClydeFan").toLowerCase().contains("clyde"));
+        assertEquals("everyone_", Text.discordName("everyone"));
         assertEquals(80, Text.webhookName(new String(new char[120]).replace('\0', 'x')).length());
     }
 
