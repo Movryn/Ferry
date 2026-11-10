@@ -1,3 +1,5 @@
+<img src="art/icon.png" width="112" align="right" alt="">
+
 # Ferry
 
 Ferry connects your Minecraft server's chat to a Discord channel, a [Fluxer](https://fluxer.app) channel, or both.
