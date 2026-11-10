@@ -1,0 +1,16 @@
+name: Ferry
+version: '${version}'
+main: xyz.movryn.ferry.bukkit.FerryPlugin
+api-version: '1.13'
+description: Links your Minecraft chat with Discord and Fluxer
+author: Movryn
+website: https://github.com/Movryn/Ferry
+commands:
+  ferry:
+    description: Check Ferry's connections or reload its config
+    usage: /ferry [status|reload]
+    permission: ferry.admin
+permissions:
+  ferry.admin:
+    description: Use /ferry
+    default: op

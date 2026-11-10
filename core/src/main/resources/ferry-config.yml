@@ -1,0 +1,88 @@
+# Ferry links your Minecraft chat with a Discord channel, a Fluxer channel, or both.
+# Fill in one section below, then restart the server (or run /ferry reload).
+
+discord:
+  enabled: false
+  # Your bot's token from https://discord.com/developers/applications
+  # Turn on "Message Content Intent" for the bot, or Ferry can't read what people say.
+  token: ""
+  # Right click the channel in Discord and pick "Copy Channel ID" (needs Developer Mode).
+  channel: ""
+  # Leave empty and Ferry makes its own webhook, if the bot has "Manage Webhooks".
+  # Or paste a webhook URL here. Without one, messages come from the bot instead of the player.
+  webhook: ""
+
+fluxer:
+  enabled: false
+  # fluxer.com, or the address of your own Fluxer, like chat.example.org
+  instance: fluxer.com
+  token: ""
+  channel: ""
+  webhook: ""
+
+# The picture shown next to players in Discord and Fluxer.
+# {uuid} is the player's UUID without dashes, {name} is their name.
+# If your server uses its own login server (authlib-injector, Drasl...), point this at it.
+avatar-url: "https://mc-heads.net/avatar/{uuid}/64"
+
+# What the server is called in messages that don't come from a player.
+server-name: "Minecraft"
+
+chat:
+  # How Discord and Fluxer messages look in game. & colour codes work here.
+  # {platform} is Discord or Fluxer, {name} the sender, {message} what they wrote.
+  to-game: "&9[{platform}] &f{name}&8: &7{message}"
+  # The name players get in Discord and Fluxer.
+  username: "{player}"
+  # Used when there's no webhook, so the bot has to say who's talking.
+  without-webhook: "**{player}**: {message}"
+  # Say something in game that starts with this and it stays in game.
+  ignore-prefix: ""
+  # With both Discord and Fluxer on, also pass messages between the two.
+  cross-post: true
+
+# Things that happen in game. For each one:
+#   send: embed, text or off
+#   color: the stripe on the side of an embed
+#   text: what it says. {player} works everywhere, plus the extras listed.
+events:
+  join:
+    send: embed
+    color: "#2ECC71"
+    text: "{player} joined the server"
+  first-join:
+    send: embed
+    color: "#F1C40F"
+    text: "{player} joined for the first time!"
+  leave:
+    send: embed
+    color: "#E74C3C"
+    text: "{player} left the server"
+  # {message} is the death message, like "Steve fell from a high place".
+  death:
+    send: embed
+    color: "#2C2F33"
+    text: "{message}"
+  # {advancement} is the advancement's name.
+  advancement:
+    send: embed
+    color: "#F39C12"
+    text: "{player} made the advancement **{advancement}**"
+  start:
+    send: embed
+    color: "#2ECC71"
+    text: "Server started"
+  stop:
+    send: embed
+    color: "#E74C3C"
+    text: "Server stopped"
+
+commands:
+  # Anyone can type this in the channel to see who's online. Leave empty to turn it off.
+  online: "!online"
+  online-reply: "{count}/{max} online: {players}"
+  online-empty: "Nobody is online right now."
+  # Lets the people listed here run server commands from the channel, like "!mc whitelist add Steve".
+  # Use their user IDs. Keep this list short, these people get full console access.
+  console-prefix: "!mc"
+  console-users: []

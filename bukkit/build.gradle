@@ -1,0 +1,15 @@
+dependencies {
+    compileOnly 'org.spigotmc:spigot-api:1.12.2-R0.1-SNAPSHOT'
+    compileOnly 'com.google.code.gson:gson:2.2.4'
+    compileOnly project(':core')
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('plugin.yml') { expand(version: project.version) }
+}
+
+jar {
+    archiveBaseName = 'Ferry-Bukkit'
+    from(project(':core').sourceSets.main.output)
+}
