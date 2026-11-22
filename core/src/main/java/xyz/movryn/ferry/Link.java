@@ -28,7 +28,7 @@ final class Link {
         void received(Link from, JsonObject message);
     }
 
-    private static final Pattern WEBHOOK = Pattern.compile("webhooks/(\\d+)/([\\w-]+)");
+    static final Pattern WEBHOOK = Pattern.compile("webhooks/(\\d+)/([\\w.-]+)");
     private static final int DISCORD_INTENTS = (1 << 0) | (1 << 9) | (1 << 15);
 
     final Platform platform;
@@ -43,6 +43,7 @@ final class Link {
     private volatile String api;
     private volatile String gateway;
     private volatile String media;
+    private volatile String origin;
     private volatile String auth;
     private volatile String botId;
     private volatile String webhookId;
@@ -146,11 +147,16 @@ final class Link {
         }
         String instance = target.instance.replaceAll("^https?://", "").replaceAll("/.*$", "");
         if (instance.isEmpty()) instance = "fluxer.com";
+        origin = "https://" + instance;
         Http.Response r = Http.send("GET", "https://" + instance + "/.well-known/fluxer", null, null);
         JsonObject endpoints = Json.obj(Json.object(r.body), "endpoints");
         if (!r.ok() || endpoints == null) throw new IOException("couldn't find a Fluxer at " + instance);
-        String client = Json.str(endpoints, "api_client");
-        api = (client != null ? client : Json.str(endpoints, "api")) + "/v1";
+        String base = Json.str(endpoints, "api_public");
+        if (base == null) base = Json.str(endpoints, "api");
+        if (base == null) base = Json.str(endpoints, "api_client");
+        if (base == null) throw new IOException("no api endpoint found in Fluxer configuration");
+        if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+        api = base.endsWith("/v1") ? base : base + "/v1";
         String gw = Json.str(endpoints, "gateway");
         gateway = gw + (gw.contains("?") ? "&" : "?") + "v=1&encoding=json";
         media = Json.str(endpoints, "media");
@@ -159,8 +165,7 @@ final class Link {
     private void resolveAuth() throws IOException {
         String[] schemes = platform == Platform.DISCORD ? new String[]{"Bot"} : new String[]{"Bot", "Bearer"};
         for (String scheme : schemes) {
-            Map<String, String> h = Collections.singletonMap("Authorization", scheme + " " + target.token);
-            Http.Response r = Http.send("GET", api + "/users/@me", h, null);
+            Http.Response r = Http.send("GET", api + "/users/@me", headers(scheme), null);
             if (r.ok()) {
                 auth = scheme;
                 botId = Json.str(Json.object(r.body), "id");
@@ -194,12 +199,24 @@ final class Link {
             write("webhook", webhookId + "/" + webhookToken);
             host.info(platform.label + ": made a webhook for the channel");
         } else {
-            host.warn(platform.label + ": no webhook (" + r.status + "), so messages will come from the bot. Give it Manage Webhooks to fix that.");
+            String detail = null;
+            if (w != null && Json.str(w, "message") != null) detail = Json.str(w, "message");
+            else if (r.body != null && !r.body.trim().isEmpty()) detail = Text.cut(r.body.trim(), 100);
+            String reason = detail != null ? " (" + r.status + ": " + detail + ")" : " (" + r.status + ")";
+            host.warn(platform.label + ": no webhook" + reason + ", so messages will come from the bot. Give it Manage Webhooks to fix that.");
         }
     }
 
     private Http.Response rest(String method, String path, String json) throws IOException {
-        return Http.send(method, api + path, Collections.singletonMap("Authorization", auth + " " + target.token), json);
+        return Http.send(method, api + path, headers(auth), json);
+    }
+
+    private Map<String, String> headers(String scheme) {
+        if (origin == null) return Collections.singletonMap("Authorization", scheme + " " + target.token);
+        Map<String, String> h = new HashMap<String, String>();
+        h.put("Authorization", scheme + " " + target.token);
+        h.put("Origin", origin);
+        return h;
     }
 
     private void connect() {
@@ -384,7 +401,8 @@ final class Link {
                     if (forBot != null) body.addProperty("content", forBot);
                 }
                 Http.Response r = hook
-                        ? Http.send("POST", api + "/webhooks/" + webhookId + "/" + webhookToken, null, body.toString())
+                        ? Http.send("POST", api + "/webhooks/" + webhookId + "/" + webhookToken,
+                                origin != null ? Collections.singletonMap("Origin", origin) : null, body.toString())
                         : rest("POST", "/channels/" + target.channel + "/messages", body.toString());
                 if (r.ok()) return;
                 if (r.status == 429) {

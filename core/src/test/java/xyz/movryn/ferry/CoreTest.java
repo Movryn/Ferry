@@ -122,6 +122,45 @@ class CoreTest {
     }
 
     @Test
+    void httpFollowsRedirects() throws Exception {
+        com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/old", exchange -> {
+            exchange.getResponseHeaders().add("Location", "/new");
+            exchange.sendResponseHeaders(308, -1);
+            exchange.close();
+        });
+        server.createContext("/new", exchange -> {
+            byte[] body = "{\"status\":\"ok\"}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        try {
+            int port = server.getAddress().getPort();
+            Http.Response res = Http.send("GET", "http://127.0.0.1:" + port + "/old", null, null);
+            assertTrue(res.ok());
+            assertEquals("{\"status\":\"ok\"}", res.body);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void webhookPatternMatchesTokensWithDotsAndDashes() {
+        Matcher m1 = Link.WEBHOOK.matcher("https://discord.com/api/webhooks/123456789/Abc-Def_123.xyz");
+        assertTrue(m1.find());
+        assertEquals("123456789", m1.group(1));
+        assertEquals("Abc-Def_123.xyz", m1.group(2));
+
+        Matcher m2 = Link.WEBHOOK.matcher("https://chat.wisple.ir/api/webhooks/1569713309668605952/JgxuIyEM0VDBgDF8NMxhkRiUbRKcZWQH2pTaVFBBdzwXLCmNJoCEWaqUXe1wozIB");
+        assertTrue(m2.find());
+        assertEquals("1569713309668605952", m2.group(1));
+        assertEquals("JgxuIyEM0VDBgDF8NMxhkRiUbRKcZWQH2pTaVFBBdzwXLCmNJoCEWaqUXe1wozIB", m2.group(2));
+    }
+
+    @Test
     void webSocketTalksToARealServer() throws Exception {
         ServerSocket server = new ServerSocket(0);
         BlockingQueue<String> fromClient = new ArrayBlockingQueue<String>(4);

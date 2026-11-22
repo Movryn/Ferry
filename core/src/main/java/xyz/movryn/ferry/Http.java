@@ -30,30 +30,43 @@ final class Http {
     }
 
     static Response send(String method, String url, Map<String, String> headers, String json) throws IOException {
-        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
-        c.setConnectTimeout(15000);
-        c.setReadTimeout(20000);
-        c.setRequestMethod(method);
-        c.setRequestProperty("User-Agent", AGENT);
-        c.setRequestProperty("Accept", "application/json");
-        if (headers != null) {
-            for (Map.Entry<String, String> h : headers.entrySet()) c.setRequestProperty(h.getKey(), h.getValue());
-        }
-        if (json != null) {
-            byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
-            c.setDoOutput(true);
-            c.setRequestProperty("Content-Type", "application/json");
-            c.setFixedLengthStreamingMode(bytes.length);
-            OutputStream out = c.getOutputStream();
-            try {
-                out.write(bytes);
-            } finally {
-                out.close();
+        String currentUrl = url;
+        for (int redirects = 0; redirects < 5; redirects++) {
+            HttpURLConnection c = (HttpURLConnection) new URL(currentUrl).openConnection();
+            c.setInstanceFollowRedirects(false);
+            c.setConnectTimeout(15000);
+            c.setReadTimeout(20000);
+            c.setRequestMethod(method);
+            c.setRequestProperty("User-Agent", AGENT);
+            c.setRequestProperty("Accept", "application/json");
+            if (headers != null) {
+                for (Map.Entry<String, String> h : headers.entrySet()) c.setRequestProperty(h.getKey(), h.getValue());
             }
+            if (json != null) {
+                byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
+                c.setDoOutput(true);
+                c.setRequestProperty("Content-Type", "application/json");
+                c.setFixedLengthStreamingMode(bytes.length);
+                OutputStream out = c.getOutputStream();
+                try {
+                    out.write(bytes);
+                } finally {
+                    out.close();
+                }
+            }
+            int status = c.getResponseCode();
+            if ((status == 301 || status == 302 || status == 303 || status == 307 || status == 308) && "GET".equals(method)) {
+                String loc = c.getHeaderField("Location");
+                if (loc != null && !loc.isEmpty()) {
+                    c.disconnect();
+                    currentUrl = new URL(new URL(currentUrl), loc).toString();
+                    continue;
+                }
+            }
+            InputStream in = status >= 400 ? c.getErrorStream() : c.getInputStream();
+            return new Response(status, in == null ? "" : read(in));
         }
-        int status = c.getResponseCode();
-        InputStream in = status >= 400 ? c.getErrorStream() : c.getInputStream();
-        return new Response(status, in == null ? "" : read(in));
+        throw new IOException("too many redirects: " + url);
     }
 
     private static String read(InputStream in) throws IOException {
